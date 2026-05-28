@@ -28,7 +28,7 @@ export class WindowHelper {
 
   constructor(appState: AppState) {
       this.appState = appState
-      this.startStealthMovement()
+      // this.startStealthMovement()
   }
 
   /**
@@ -142,25 +142,25 @@ export class WindowHelper {
       },
       show: false, // Start hidden, then show after setup
       alwaysOnTop: true,
-      frame: false,
-      transparent: true,
+      frame: true,
+      transparent: false,
       fullscreenable: false,
-      hasShadow: false,
-      backgroundColor: "#00000000",
+      hasShadow: true,
+      backgroundColor: "#ffffff",
       focusable: true,
       resizable: true,
       movable: true,
       x: 100, // Start at a visible position
       y: 100,
       // Stealth mode properties to prevent detection in screen sharing
-      type: process.platform === 'win32' ? 'tool' : 'utility',
-      skipTaskbar: true,
+      type: process.platform === 'win32' ? 'window' : 'normal',
+      skipTaskbar: false,
       // Enable content protection to prevent screen capture
     }
 
     this.mainWindow = new BrowserWindow(windowSettings)
     // this.mainWindow.webContents.openDevTools()
-    this.mainWindow.setContentProtection(true)
+    this.mainWindow.setContentProtection(false)
 
     if (process.platform === "darwin") {
       this.mainWindow.setVisibleOnAllWorkspaces(true, {
@@ -177,7 +177,7 @@ export class WindowHelper {
       // Keep window focusable on Linux for proper interaction
       this.mainWindow.setFocusable(true)
     } 
-    this.mainWindow.setSkipTaskbar(true)
+    this.mainWindow.setSkipTaskbar(false)
     this.mainWindow.setAlwaysOnTop(true)
 
     this.mainWindow.loadURL(startUrl).catch((err) => {
@@ -202,8 +202,8 @@ export class WindowHelper {
         this.mainWindow.focus()
         this.mainWindow.setAlwaysOnTop(true)
         // Enable content protection to prevent screen capture/detection
-        this.mainWindow.setContentProtection(true)
-        console.log("Window is now visible, centered, and content protected")
+        this.mainWindow.setContentProtection(false)
+        console.log("Window is now visible, centered")
       }
     })
 
