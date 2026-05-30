@@ -74,8 +74,13 @@ async function initializeApp() {
   app.commandLine.appendSwitch("disable-background-timer-throttling")
   app.commandLine.appendSwitch("disable-features", "BlockInsecurePrivateNetworkRequests")
   app.commandLine.appendSwitch("unsafely-treat-insecure-origin-as-secure", "http://localhost:5180")
+  // Speech flags — these help but Web Speech still needs Google's servers.
+  // The app auto-falls back to Whisper (Groq) when a network error occurs.
   app.commandLine.appendSwitch("enable-speech-input")
-  app.commandLine.appendSwitch("enable-speech-dispatcher") // For Linux support if needed
+  app.commandLine.appendSwitch("enable-speech-dispatcher")
+  // Allow microphone access without a secure origin prompt
+  app.commandLine.appendSwitch("unsafely-treat-insecure-origin-as-secure", "http://localhost:5180")
+  app.commandLine.appendSwitch("allow-file-access-from-files")
 }
 
 initializeApp().catch(console.error)

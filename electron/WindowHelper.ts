@@ -18,7 +18,7 @@ export class WindowHelper {
   // Initialize with explicit number type and 0 value
   private screenWidth: number = 0
   private screenHeight: number = 0
-  private step: number = 0
+  private step: number = 50
   private currentX: number = 0
   private currentY: number = 0
   private lastMoveTime: number = 0
@@ -130,8 +130,8 @@ export class WindowHelper {
 
     
     const windowSettings: Electron.BrowserWindowConstructorOptions = {
-      width: 400,
-      height: 600,
+      width: 900,
+      height: 700,
       minWidth: 300,
       minHeight: 200,
       webPreferences: {
@@ -140,27 +140,27 @@ export class WindowHelper {
         preload: path.join(__dirname, "preload.js"),
         webSecurity: false,
       },
-      show: false, // Start hidden, then show after setup
+      show: false,
       alwaysOnTop: true,
-      frame: true,
-      transparent: false,
+      // Frameless + transparent = no OS chrome to screenshot
+      frame: false,
+      transparent: true,
       fullscreenable: false,
-      hasShadow: true,
-      backgroundColor: "#ffffff",
+      hasShadow: false,
+      backgroundColor: "#00000000",
       focusable: true,
       resizable: true,
       movable: true,
-      x: 100, // Start at a visible position
+      x: 100,
       y: 100,
-      // Stealth mode properties to prevent detection in screen sharing
-      type: process.platform === 'win32' ? 'window' : 'normal',
-      skipTaskbar: false,
-      // Enable content protection to prevent screen capture
+      type: process.platform === "win32" ? "toolbar" : "panel",
+      skipTaskbar: true,
     }
 
     this.mainWindow = new BrowserWindow(windowSettings)
-    // this.mainWindow.webContents.openDevTools()
-    this.mainWindow.setContentProtection(false)
+    // Enable content protection immediately — blocks PrintScreen, screen capture APIs,
+    // OBS, screen share in Zoom/Teams/Meet, and Windows Game Bar
+    this.mainWindow.setContentProtection(true)
 
     if (process.platform === "darwin") {
       this.mainWindow.setVisibleOnAllWorkspaces(true, {
@@ -184,26 +184,23 @@ export class WindowHelper {
       console.error("Failed to load URL:", err)
     })
 
-    // Show window after loading URL and center it
-    this.mainWindow.once('ready-to-show', () => {
+    this.mainWindow.once("ready-to-show", () => {
       if (this.mainWindow) {
-        // Allow content-permission requests (microphone for Web Speech API)
-        // @ts-ignore - Electron event type mismatch for permission-request
-        this.mainWindow.webContents.on('permission-request', (_event, permission: string, callback: (result: boolean) => void) => {
-          if (permission === 'media' || permission === 'mediaKeySystem' || permission === 'notifications' || permission === 'audio-capture') {
+        // @ts-ignore
+        this.mainWindow.webContents.on("permission-request", (_event, permission: string, callback: (result: boolean) => void) => {
+          if (["media", "mediaKeySystem", "notifications", "audio-capture"].includes(permission)) {
             callback(true)
           } else {
             callback(false)
           }
         })
-        // Center the window first
         this.centerWindow()
         this.mainWindow.show()
         this.mainWindow.focus()
-        this.mainWindow.setAlwaysOnTop(true)
-        // Enable content protection to prevent screen capture/detection
-        this.mainWindow.setContentProtection(false)
-        console.log("Window is now visible, centered")
+        this.mainWindow.setAlwaysOnTop(true, "screen-saver")
+        // Keep content protection ON — never disable on show
+        this.mainWindow.setContentProtection(true)
+        console.log("Window visible — content protection active")
       }
     })
 
@@ -276,12 +273,13 @@ export class WindowHelper {
         x: this.windowPosition.x,
         y: this.windowPosition.y,
         width: this.windowSize.width,
-        height: this.windowSize.height
+        height: this.windowSize.height,
       })
     }
 
     this.mainWindow.showInactive()
-
+    // Always re-apply content protection — it can be reset by some OS operations
+    this.mainWindow.setContentProtection(true)
     this.isWindowVisible = true
   }
 
@@ -326,19 +324,13 @@ export class WindowHelper {
   }
 
   public centerAndShowWindow(): void {
-    if (!this.mainWindow || this.mainWindow.isDestroyed()) {
-      console.warn("Main window does not exist or is destroyed.")
-      return
-    }
-
+    if (!this.mainWindow || this.mainWindow.isDestroyed()) return
     this.centerWindow()
     this.mainWindow.show()
     this.mainWindow.focus()
-    this.mainWindow.setAlwaysOnTop(true)
-    if (this.isStealthMode) this.mainWindow.setContentProtection(true)
+    this.mainWindow.setAlwaysOnTop(true, "screen-saver")
+    this.mainWindow.setContentProtection(true)
     this.isWindowVisible = true
-    
-    console.log(`Window centered and shown with content protection`)
   }
 
   public toggleStealth(): boolean {
@@ -346,19 +338,23 @@ export class WindowHelper {
     this.isStealthMode = !this.isStealthMode
 
     if (this.isStealthMode) {
+      // Full stealth: hidden from taskbar, screen-saver level always-on-top,
+      // content protection always on, no shadow, periodic micro-movements
       this.mainWindow.setContentProtection(true)
       this.mainWindow.setSkipTaskbar(true)
-      this.mainWindow.setAlwaysOnTop(true, "floating")
+      this.mainWindow.setAlwaysOnTop(true, "screen-saver")
       this.mainWindow.setHasShadow(false)
       this.startStealthMovement()
-      console.log("Stealth mode ENABLED — content protected, hidden from taskbar, undetectable")
+      console.log("Stealth ON — undetectable")
     } else {
-      this.mainWindow.setContentProtection(false)
+      // Detectable mode: visible in taskbar, normal always-on-top level,
+      // BUT content protection stays ON — we never allow screenshots of the app
+      this.mainWindow.setContentProtection(true)
       this.mainWindow.setSkipTaskbar(false)
-      this.mainWindow.setAlwaysOnTop(true, "normal")
+      this.mainWindow.setAlwaysOnTop(true, "floating")
       this.mainWindow.setHasShadow(true)
       this.stopStealthMovement()
-      console.log("Stealth mode DISABLED — visible in screen share, taskbar, and recordings")
+      console.log("Stealth OFF — visible in taskbar (content still protected)")
     }
     return this.isStealthMode
   }
