@@ -5,6 +5,13 @@ export function initializeIpcHandlers(appState: AppState): void {
   const llm = () => appState.processingHelper.getLLMHelper()
   const history = () => appState.historyHelper
 
+  // Load persisted context documents into LLM on startup
+  const ctx = history().getAllContextText()
+  if (ctx) {
+    llm().setContextDocuments(ctx)
+    console.log("[IPC] Loaded context documents on startup —", ctx.length, "chars")
+  }
+
   // ─── Screenshots ─────────────────────────────────────────────────────────────
 
   ipcMain.handle("get-screenshots", async () => {
@@ -61,10 +68,10 @@ export function initializeIpcHandlers(appState: AppState): void {
 
   ipcMain.handle("get-available-ollama-models", () => llm().getOllamaModels())
   ipcMain.handle("get-available-groq-models", async () => [
-    "llama-3.1-8b-instant",
-    "llama-3.3-70b-versatile",
-    "mixtral-8x7b-32768",
+    "llama-3.3-70b-versatile",   // best quality, recommended
+    "llama-3.1-8b-instant",      // fastest, lower quality
     "llama3-70b-8192",
+    "mixtral-8x7b-32768",
     "gemma2-9b-it",
   ])
 

@@ -1,268 +1,223 @@
-# [Sponsored by Recall AI - API for desktop recording](https://docs.recall.ai/docs/desktop-sdk?utm_source=github&utm_medium=sponsorship&utm_campaign=prat011-free-cluely)
-If you’re looking for a hosted desktop recording API, consider checking out [Recall.ai](https://docs.recall.ai/docs/desktop-sdk?utm_source=github&utm_medium=sponsorship&utm_campaign=prat011-free-cluely), an API that records Zoom, Google Meet, Microsoft Teams, in-person meetings, and more.
+# Free Cluely
 
-# Cluely
+> A free, open-source AI interview and meeting assistant. Real-time answers, live transcription, coding mode, stealth screen protection, and resume-aware responses — no subscription required.
 
-[Cluely](https://cluely.com) - The invisible desktop assistant that provides real-time insights, answers, and support during meetings, interviews, presentations, and professional conversations.
+---
 
+## What it does
 
-## 🚀 Quick Start Guide
+Free Cluely is an always-on-top desktop overlay that listens to your interviews and meetings, then generates spoken-word answers using your resume as context. It stays invisible to screen recording software and works with any video call platform.
+
+**Key capabilities:**
+- Real-time AI answers tailored to your resume — sounds like you, not a chatbot
+- Live speech-to-text via Web Speech API or Groq Whisper (52 languages)
+- Coding interview mode — screenshots a problem and generates a full solution
+- Post-session analysis with scoring, strengths, and improvement areas
+- Pre-call brief generator — talking points and questions before any meeting
+- Stealth mode — blocked from PrintScreen, OBS, Zoom/Teams screen share
+- 100% free — BYOK (bring your own API key) for Groq, Gemini, or Ollama
+
+---
+
+## Quick start
 
 ### Prerequisites
-- Make sure you have Node.js installed on your computer
-- Git installed on your computer  
-- **Either** a Gemini API key (get it from [Google AI Studio](https://makersuite.google.com/app/apikey))
-- **Or** Ollama installed locally for private LLM usage (recommended for privacy)
 
-### Installation Steps
+- [Node.js](https://nodejs.org) 18+
+- A [Groq API key](https://console.groq.com) — free tier is sufficient
 
-1. Clone the repository:
+### Install
+
 ```bash
-git clone [repository-url]
+git clone https://github.com/your-username/free-cluely.git
 cd free-cluely
-```
-
-2. Install dependencies:
-```bash
-# If you encounter Sharp/Python build errors, use this:
-SHARP_IGNORE_GLOBAL_LIBVIPS=1 npm install --ignore-scripts
-npm rebuild sharp
-
-# Or for normal installation:
 npm install
 ```
 
-3. Set up environment variables:
-   - Create a file named `.env` in the root folder
-   
-   **For Gemini (Cloud AI):**
-   ```env
-   GEMINI_API_KEY=your_api_key_here
-   ```
-   
-   **For Ollama (Local/Private AI):**
-   ```env
-   USE_OLLAMA=true
-   OLLAMA_MODEL=llama3.2
-   OLLAMA_URL=http://localhost:11434
-   ```
-   
-   - Save the file
+### Configure
 
-### Running the App
+Create a `.env` file in the project root:
 
-#### Method 1: Development Mode (Recommended for first run)
-1. Start the development server:
+```env
+# Groq (recommended — free, fast, supports Whisper STT)
+USE_GROQ=true
+GROQ_API_KEY=gsk_your_key_here
+GROQ_MODEL=llama-3.3-70b-versatile
+
+# Or Gemini
+# GEMINI_API_KEY=AIza_your_key_here
+
+# Or local Ollama
+# USE_OLLAMA=true
+# OLLAMA_MODEL=llama3.2
+# OLLAMA_URL=http://localhost:11434
+```
+
+### Run
+
 ```bash
 npm start
 ```
 
-This command automatically:
-- Starts the Vite dev server on port 5180
-- Waits for the server to be ready
-- Launches the Electron app
+---
 
-#### Method 2: Production Build
-```bash
-npm run dist
-```
-The built app will be in the `release` folder.
+## Setup walkthrough
 
-## 🤖 AI Provider Options
+**1. Add your resume**
 
-### Ollama (Recommended for Privacy)
-**Pros:**
-- 100% private - data never leaves your computer
-- No API costs
-- Works offline
-- Supports many models: llama3.2, codellama, mistral, etc.
+Open the dashboard → Context Docs tab → Add Document. Paste your resume text and select type "Resume". The AI uses this to answer every question as you, with your real companies, projects, and numbers.
 
-**Setup:**
-1. Install Ollama from [ollama.ai](https://ollama.ai)
-2. Pull a model: `ollama pull llama3.2`
-3. Set environment variables as shown above
+**2. Start a session**
 
-### Google Gemini
-**Pros:**
-- Latest AI technology
-- Fastest responses
-- Best accuracy for complex tasks
+Click "Start Session" or use `Ctrl+Enter` when ready. The overlay appears at the top of your screen.
 
-**Cons:**
-- Requires API key and internet
-- Data sent to Google servers
-- Usage costs apply
+**3. Get answers**
 
-### ⚠️ Important Notes
+Speak naturally during your interview. Press `Ctrl+Enter` to trigger an AI answer on demand, or enable Auto-detect in Settings to have it fire automatically when a question is detected.
 
-1. **Closing the App**: 
-   - Press `Cmd + Q` (Mac) or `Ctrl + Q` (Windows/Linux) to quit
-   - Or use Activity Monitor/Task Manager to close `Interview Coder`
-   - The X button currently doesn't work (known issue)
+**4. End and review**
 
-2. **If the app doesn't start**:
-   - Make sure no other app is using port 5180
-   - Try killing existing processes:
-     ```bash
-     # Find processes using port 5180
-     lsof -i :5180
-     # Kill them (replace [PID] with the process ID)
-     kill [PID]
-     ```
-   - For Ollama users: Make sure Ollama is running (`ollama serve`)
-
-3. **Keyboard Shortcuts**:
-   - `Cmd/Ctrl + B`: Toggle window visibility
-   - `Cmd/Ctrl + H`: Take screenshot
-   - 'Cmd/Enter': Get solution
-   - `Cmd/Ctrl + Arrow Keys`: Move window
-
-## 🔧 Troubleshooting
-
-### Windows Issues Fixed 
-- **UI not loading**: Port mismatch resolved
-- **Electron crashes**: Improved error handling  
-- **Build failures**: Production config updated
-- **Window focus problems**: Platform-specific fixes applied
-
-### Ubuntu/Linux Issues Fixed 
-- **Window interaction**: Fixed focusable settings
-- **Installation confusion**: Clear setup instructions
-- **Missing dependencies**: All requirements documented
-
-### Common Solutions
-
-#### Sharp/Python Build Errors
-If you see `gyp ERR! find Python` or Sharp build errors:
-```bash
-# Solution 1: Use prebuilt binaries
-rm -rf node_modules package-lock.json
-SHARP_IGNORE_GLOBAL_LIBVIPS=1 npm install --ignore-scripts
-npm rebuild sharp
-
-# Solution 2: Or install Python (if you prefer building from source)
-brew install python3  # macOS
-# Then run: npm install
-```
-
-#### General Installation Issues
-If you see other errors:
-1. Delete the `node_modules` folder
-2. Delete `package-lock.json` 
-3. Run `npm install` again
-4. Try running with `npm start`
-
-### Platform-Specific Notes
-- **Windows**: App now works on Windows 10/11
-- **Ubuntu/Linux**: Tested on Ubuntu 20.04+ and most Linux distros  
-- **macOS**: Native support with proper window management
-
-## Key Features
-
-### **Invisible AI Assistant**
-- Translucent, always-on-top window that's barely noticeable
-- Hide/show instantly with global hotkeys
-- Works seamlessly across all applications
-
-### **Smart Screenshot Analysis** 
-- Take screenshots of any content with `Cmd/Ctrl + H`
-- AI analyzes images, documents, presentations, or problems
-- Get instant explanations, answers, and solutions
-
-### **Audio Intelligence**
-- Process audio files and recordings
-- Real-time transcription and analysis
-- Perfect for meeting notes and content review
-
-### **Contextual Chat**
-- Chat with AI about anything you see on screen
-- Maintains conversation context
-- Ask follow-up questions for deeper insights
-
-### **Privacy-First Design**
-- **Local AI Option**: Use Ollama for 100% private processing
-- **Cloud Option**: Google Gemini for maximum performance
-- Screenshots auto-deleted after processing
-- No data tracking or storage
-
-### **Cross-Platform Support**
-- **Windows 10/11** - Full support with native performance
-- **Ubuntu/Linux** - Optimized for all major distributions  
-- **macOS** - Native window management and shortcuts
-
-## Use Cases
-
-### **Academic & Learning**
-```
-✓ Live presentation support during classes
-✓ Quick research during online exams  
-✓ Language translation and explanations
-✓ Math and science problem solving
-```
-
-### **Professional Meetings**
-```
-✓ Sales call preparation and objection handling
-✓ Technical interview coaching
-✓ Client presentation support
-✓ Real-time fact-checking and data lookup
-```
-
-### **Development & Tech**
-```
-✓ Debug error messages instantly
-✓ Code explanation and optimization
-✓ Documentation and API references
-✓ Algorithm and architecture guidance
-```
-
-## Why Choose Free Cluely?
-
-| Feature | Free Cluely | Commercial Alternatives |
-|---------|-------------|------------------------|
-| **Cost** | 100% Free | $29-99/month |
-| **Privacy** | Local AI Option | Cloud-only |
-| **Open Source** | Full transparency | Closed source |
-| **Customization** | Fully customizable | Limited options |
-| **Data Control** | You own your data | Third-party servers |
-| **Offline Mode** | Yes (with Ollama) | No |
-
-## Technical Details
-
-### **AI Models Supported**
-- **Gemini 2.0 Flash** - Latest Google AI with vision capabilities
-- **Llama 3.2** - Meta's advanced local model via Ollama
-- **CodeLlama** - Specialized coding assistance
-- **Mistral** - Lightweight, fast responses
-- **Custom Models** - Any Ollama-compatible model
-
-### **System Requirements**
-```bash
-Minimum:  4GB RAM, Dual-core CPU, 2GB storage
-Recommended: 8GB+ RAM, Quad-core CPU, 5GB+ storage
-Optimal: 16GB+ RAM for local AI models
-```
-
-## 🤝 Contributing
-
-This project welcomes contributions! While I have limited time for active maintenance, I'll review and merge quality PRs.
-
-**Ways to contribute:**
-- 🐛 Bug fixes and stability improvements
-- ✨ New features and AI model integrations  
-- 📚 Documentation and tutorial improvements
-- 🌍 Translations and internationalization
-- 🎨 UI/UX enhancements
-
-For commercial integrations or custom development, reach out on [Twitter](https://x.com/prathitjoshi_)
-
-## 📄 License
-
-ISC License - Free for personal and commercial use.
+Click "End" in the overlay to save the session. Open the Recap tab to generate a post-interview score, strengths/improvements breakdown, or structured meeting notes.
 
 ---
 
-**⭐ Star this repo if Free Cluely helps you succeed in meetings, interviews, or presentations!**
+## Keyboard shortcuts
 
-### 🏷️ Tags
-`ai-assistant` `meeting-notes` `interview-helper` `presentation-support` `ollama` `gemini-ai` `electron-app` `cross-platform` `privacy-focused` `open-source` `local-ai` `screenshot-analysis` `academic-helper` `sales-assistant` `coding-companion`
+| Shortcut | Action |
+|---|---|
+| `Ctrl/Cmd + Enter` | Get AI answer for current transcript |
+| `Ctrl/Cmd + H` | Screenshot + analyze (triggers answer automatically) |
+| `Ctrl/Cmd + Shift + C` | Coding mode — capture and solve problem on screen |
+| `Ctrl/Cmd + Shift + R` | Regenerate — get a different answer |
+| `Ctrl/Cmd + Shift + S` | Toggle stealth mode |
+| `Ctrl/Cmd + B` | Show / hide the window |
+| `Ctrl/Cmd + ↑↓←→` | Move the window (50px per press) |
+
+---
+
+## Features
+
+### Resume-aware answers
+Upload your resume in Context Docs. Every answer the AI generates will reference your real name, companies, projects, and numbers — not generic examples. The system prompt explicitly instructs the model to speak as you, in first person.
+
+### Live transcription
+Two modes available:
+- **Web Speech API** (default) — works out of the box, uses Google's servers
+- **Whisper mode** — Groq's `whisper-large-v3` for higher accuracy, 52 languages, works even when Google's service is blocked. Automatically activates if Web Speech hits a network error.
+
+### Coding interview mode
+Press `Ctrl+Shift+C` during a coding round. The app screenshots your screen, extracts the problem via OCR (Gemini) or text analysis, and returns a complete solution in your preferred language with time/space complexity and hints.
+
+### Post-interview analysis
+After ending a session, click "Analyze Performance" in the Recap tab. The AI scores your answers 0–100, identifies strengths, lists specific improvements, and writes a 2-3 sentence overall assessment.
+
+### Pre-call brief
+Before a meeting, go to the Pre-Call Brief tab, enter the meeting title and participants, and generate a preparation brief with talking points, questions to ask, and background context.
+
+### Auto question detection
+Enable in Settings → Behavior. Polls the transcript every 3 seconds, detects when a question was asked (>65% confidence), and fires an answer automatically — no hotkey needed.
+
+### Follow-up questions
+After every answer, 3 likely follow-up questions are generated and shown as clickable chips. Clicking one adds it to the transcript and triggers an answer immediately.
+
+### Stealth mode
+Uses Electron's `setContentProtection(true)` + frameless transparent window to be invisible to:
+- Windows PrintScreen / Snipping Tool
+- OBS and screen recording software
+- Zoom, Teams, Meet screen sharing
+- Window enumeration tools
+
+Content protection is always on. Stealth mode additionally hides from the taskbar and enables periodic micro-movements to defeat positional pattern detection.
+
+### Session history
+Every session is saved locally with transcript, Q&A pairs, duration, performance score, and meeting notes. Accessible from the History tab on the dashboard.
+
+### Knowledge base
+Store multiple documents — resume, job descriptions, company notes, anything. All are injected as context for every AI call. Documents persist across sessions in Electron's userData directory.
+
+---
+
+## AI providers
+
+| Provider | Best for | Setup |
+|---|---|---|
+| **Groq** (recommended) | Speed + quality — `llama-3.3-70b-versatile` for answers, `whisper-large-v3` for STT | [console.groq.com](https://console.groq.com) — free tier |
+| **Gemini** | Vision/OCR for coding mode screenshots | [aistudio.google.com](https://aistudio.google.com) |
+| **Ollama** | 100% private, offline, no API costs | [ollama.ai](https://ollama.ai) |
+
+You can mix providers — e.g. Groq for answers + Gemini for screenshot analysis. Switch at any time from Settings without restarting.
+
+---
+
+## Troubleshooting
+
+**App shows a blank window**
+Make sure port 5180 is free. Kill anything using it and run `npm start` again.
+
+**"Groq API key not configured" on Whisper**
+Web Speech hit a network error and tried to switch to Whisper. Add your Groq key in Settings → AI Provider, save, then restart the session.
+
+**Answers are generic / don't mention my background**
+Make sure you've added your resume in Context Docs. Without it the model has no personal details to work with.
+
+**STT transcribing noise / hallucinations**
+Switch to Whisper mode in Settings. It's more accurate than Web Speech and the app filters out silence using `no_speech_prob` per segment plus a pattern-based hallucination blocklist.
+
+**App visible in screen share despite stealth**
+Restart the app — content protection initializes on window creation. Also confirm Stealth shows as ON (green badge) in the header.
+
+**Window movement not working**
+Use `Ctrl+Arrow` keys. Each press moves 50px. The window must be focused — click it first if needed.
+
+**Sharp build errors on install**
+```bash
+npm install --ignore-scripts
+```
+
+---
+
+## System requirements
+
+| | Minimum | Recommended |
+|---|---|---|
+| RAM | 4 GB | 8 GB+ |
+| CPU | Dual-core | Quad-core |
+| Storage | 1 GB | 2 GB |
+| OS | Windows 10, macOS 11, Ubuntu 20.04 | Latest |
+
+---
+
+## Architecture
+
+```
+free-cluely/
+├── electron/          # Main process (Node.js)
+│   ├── main.ts        # App entry, AppState singleton
+│   ├── WindowHelper   # Frameless window, stealth, content protection
+│   ├── LLMHelper      # Groq / Gemini / Ollama — answers + STT
+│   ├── HistoryHelper  # JSON persistence — sessions, docs, settings
+│   ├── ipcHandlers    # All IPC channels between main and renderer
+│   ├── shortcuts      # Global keyboard shortcuts
+│   └── preload        # Secure contextBridge API surface
+└── src/               # Renderer process (React + Vite)
+    └── _pages/
+        └── CluelyUI   # Full UI — dashboard + overlay
+```
+
+---
+
+## Contributing
+
+PRs welcome. The codebase is intentionally kept simple — one main UI component, one LLM helper, straightforward IPC.
+
+Good first issues:
+- Additional hallucination patterns for the STT filter
+- Support for more Groq models as they're released
+- i18n for the dashboard UI
+- System audio capture (interviewer's voice without mic)
+
+---
+
+## License
+
+MIT — free for personal and commercial use.

@@ -8,7 +8,7 @@ export class LLMHelper {
   private ollamaUrl: string = "http://localhost:11434"
   private useGroq: boolean = false
   private groqApiKey: string = ""
-  private groqModel: string = "llama-3.1-8b-instant"
+  private groqModel: string = "llama-3.3-70b-versatile"
   private groqUrl: string = "https://api.groq.com/openai/v1"
   private contextDocuments: string = ""
 
@@ -70,7 +70,7 @@ export class LLMHelper {
           },
           { role: "user", content: prompt },
         ],
-        temperature: 0.2,
+        temperature: 0.3,
         max_tokens: 2048,
       }),
     })
@@ -117,49 +117,64 @@ export class LLMHelper {
   }
 
   async chat(message: string): Promise<string> {
-    const ctx = this.contextDocuments ? `\n\n[USER BACKGROUND/CONTEXT]\n${this.contextDocuments}\n[END BACKGROUND]` : ""
-    const prompt = `Question: ${message}${ctx}
+    const hasResume = this.contextDocuments.length > 0
+    const ctx = hasResume
+      ? `\n\n=== YOUR RESUME / BACKGROUND ===\n${this.contextDocuments}\n=== END RESUME ===`
+      : ""
 
-Instructions:
-1. Provide a natural, conversational answer as if you are a candidate in a technical interview.
-2. Use the first person ("I", "my experience").
-3. If context documents (resume/JD) are provided, weave them into your answer naturally.
-4. Keep it concise (3-5 sentences) and ready to be spoken aloud.
-5. Avoid bullet points or textbook definitions. Speak like a real engineer.`
+    const systemPrompt = hasResume
+      ? `You are the candidate described in the resume above. You are in a live job interview. Answer every question in first person as yourself — use your real name, your real companies, your real projects, your real numbers from the resume. Speak naturally like a confident, senior engineer. Never say "the candidate" or "they". Always say "I", "my", "I've".
 
-    const systemPrompt =
-      "You are a top-tier software engineer and architect undergoing a high-stakes technical interview. Your goal is to provide human-like, conversational, and highly impressive answers. Do not sound like an AI; sound like a seasoned professional speaking naturally."
+ANSWER FORMAT:
+- 150-250 words
+- Natural spoken English — no bullet points, no headers
+- Start with a direct answer, then back it up with specific examples from your resume
+- Include real metrics, company names, and project names where relevant
+- End with a forward-looking or connecting statement
+- Sound like a confident professional, not a textbook`
+      : `You are a confident senior software engineer in a live job interview. Answer in first person, naturally and in detail. Sound like a real person, not a textbook. 150-250 words.`
+
+    const prompt = hasResume
+      ? `${ctx}\n\nInterview question: "${message}"\n\nAnswer this as yourself using your actual experience from the resume. Be specific — use real company names, project names, and numbers. 150-250 words, natural spoken English, no bullet points.`
+      : `Interview question: "${message}"\n\nAnswer naturally in 150-250 words, first person, ready to say out loud. No bullet points.`
 
     return this.callLLM(prompt, systemPrompt)
   }
 
   async analyzeContext(conversationContext: string, screenshotText?: string): Promise<string> {
-    const ctx = this.contextDocuments ? `\n\n[USER RESUME/JD]\n${this.contextDocuments}\n[END RESUME/JD]` : ""
-    const screen = screenshotText ? `\n\n[SCREEN CONTENT]\n${screenshotText}\n[END SCREEN CONTENT]` : ""
+    const hasResume = this.contextDocuments.length > 0
+    const resumeBlock = hasResume
+      ? `=== YOUR RESUME / BACKGROUND ===\n${this.contextDocuments}\n=== END RESUME ===\n\n`
+      : ""
+    const screen = screenshotText ? `\n\n=== SCREEN CONTENT ===\n${screenshotText}\n=== END SCREEN ===` : ""
 
-    const systemPrompt =
-      "You are a real-time interview wingman. Your job is to listen to the interview and give the user natural, spoken-word answers they can use immediately. Sound like a human candidate, not a documentation bot."
+    const systemPrompt = hasResume
+      ? `You are the candidate described in the resume. You are in a live job interview RIGHT NOW. When answering:
+- Speak as yourself in first person — use your real name, real companies, real projects, real metrics
+- Never say "the candidate" — always say "I", "my", "I've built", "I worked at"
+- Give detailed, interview-quality answers: 150-250 words
+- Structure: direct answer → specific example with details → impact/result → brief closing
+- Use real numbers, company names, and project names from your resume
+- Sound like a confident senior engineer speaking naturally, not reading from a document
+- No bullet points, no headers — flowing spoken English`
+      : `You are a confident senior software engineer in a live job interview. Answer in first person with detail and confidence. 150-250 words, natural spoken English, no bullet points.`
 
-    const prompt = `[CONVERSATION SO FAR]
+    const prompt = `${resumeBlock}=== WHAT THE INTERVIEWER JUST SAID ===
 ${conversationContext}
-[END CONVERSATION]
-${screen}
-${ctx}
+=== END ===${screen}
 
-TASK:
-1. Identify the core technical question or topic from the conversation above.
-2. IMPORTANT: The transcript may contain errors. If you see phrases like "Black system", "Rag system", "Rat system", "Rack system", etc., assume the topic is "RAG (Retrieval-Augmented Generation)".
-3. Give me a conversational, human-like answer I can say right now.
+INSTRUCTIONS:
+1. Identify the question being asked. Ignore transcription noise like "rek rek", "tick tock", single words.
+2. Answer the question as yourself, in first person, using specific details from your resume.
+3. Give a full interview-quality answer: 150-250 words.
+4. Structure your answer: open with a direct statement → give a specific example with real details → mention the impact or result → close naturally.
+5. Use real names, companies, projects, and numbers from your background.
+6. Natural spoken English — no bullet points, no "Firstly/Secondly", no headers.
+7. Do NOT start with "It seems like", "Great question", or any preamble. Start directly with your answer.`
 
-RULES:
-- Start directly with the answer.
-- Use natural phrasing ("In my experience...", "Actually, I've worked with...").
-- Max 4 sentences.
-- Be technically precise but sound like a person.`
-
-    console.log(`[LLM] analyzeContext — provider: ${this.getCurrentProvider()} | transcript: ${conversationContext.length} chars | screen: ${screenshotText ? screenshotText.length + " chars" : "none"}`)
+    console.log(`[LLM] analyzeContext — provider: ${this.getCurrentProvider()} | transcript: ${conversationContext.length} chars | hasResume: ${hasResume} | screen: ${screenshotText ? "yes" : "no"}`)
     const result = await this.callLLM(prompt, systemPrompt)
-    console.log(`[LLM] analyzeContext result: ${result?.length} chars`)
+    console.log(`[LLM] analyzeContext result: ${result?.length} chars | preview: ${result?.slice(0, 80)}`)
     return result
   }
 
@@ -470,13 +485,15 @@ Return ONLY the JSON.`
 
     const formData = new FormData()
     formData.append("file", new Blob([audioBuffer as any]), "audio.webm")
-    formData.append("model", "whisper-large-v3-turbo")
+    formData.append("model", "whisper-large-v3")
     formData.append("language", language)
+    // Steer Whisper toward technical vocabulary only — never put instructions in the prompt
+    // because Whisper treats the prompt as speech context and will repeat it on silence
     formData.append(
       "prompt",
-      "Technical interview: RAG (Retrieval-Augmented Generation), LLM, GPT, Python, PyTest, React, TypeScript, Backend, Frontend, SQL, Database."
+      "RAG, LLM, GPT-4, Python, React, TypeScript, SQL, Docker, Kubernetes, API, microservices, neural network, transformer, embeddings, vector database, fine-tuning."
     )
-    formData.append("response_format", "json")
+    formData.append("response_format", "verbose_json")
 
     const response = await fetch(`${this.groqUrl}/audio/transcriptions`, {
       method: "POST",
@@ -491,8 +508,33 @@ Return ONLY the JSON.`
       }
       throw new Error(`Groq transcription error: ${response.status} ${err}`)
     }
+
     const data = await response.json()
-    return data.text || ""
+
+    // Use verbose_json segments if available, filtering by no_speech_prob
+    // But also apply text-based filtering since Groq's no_speech_prob can be unreliable
+    let rawText = ""
+    if (data.segments && Array.isArray(data.segments)) {
+      rawText = data.segments
+        .filter((seg: any) => {
+          const noSpeech = seg.no_speech_prob ?? 0
+          const text = seg.text?.trim() ?? ""
+          console.log(`[STT] segment: "${text}" | no_speech_prob: ${noSpeech.toFixed(3)}`)
+          // Drop if Whisper is confident it's not speech
+          if (noSpeech > 0.5) return false
+          // Drop single punctuation or very short noise segments
+          if (text.replace(/[.,!?;:\s]/g, "").length < 2) return false
+          return true
+        })
+        .map((seg: any) => seg.text?.trim())
+        .filter(Boolean)
+        .join(" ")
+    } else {
+      rawText = data.text || ""
+    }
+
+    console.log(`[STT] After segment filter: "${rawText}"`)
+    return rawText
   }
 
   async testConnection(): Promise<{ success: boolean; error?: string }> {

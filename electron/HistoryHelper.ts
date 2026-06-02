@@ -59,7 +59,7 @@ const DEFAULT_SETTINGS: AppSettings = {
   whisperMode: false,
   stealthMode: false,
   selectedProvider: "groq",
-  selectedModel: "llama-3.1-8b-instant",
+  selectedModel: "llama-3.3-70b-versatile",
   groqApiKey: "",
   geminiApiKey: "",
   ollamaUrl: "http://localhost:11434",

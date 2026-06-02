@@ -262,7 +262,7 @@ const CluelyUI: React.FC = () => {
     whisperMode: false,
     stealthMode: false,
     selectedProvider: "groq",
-    selectedModel: "llama-3.1-8b-instant",
+    selectedModel: "llama-3.3-70b-versatile",
     groqApiKey: "",
     geminiApiKey: "",
     ollamaUrl: "http://localhost:11434",
@@ -314,7 +314,7 @@ const CluelyUI: React.FC = () => {
   const [speechError, setSpeechError] = useState("")
   const [llmError, setLlmError] = useState("")
   const [autoDetectEnabled, setAutoDetectEnabled] = useState(false)
-  const [modelInfo, setModelInfo] = useState({ provider: "groq", model: "llama-3.1-8b-instant" })
+  const [modelInfo, setModelInfo] = useState({ provider: "groq", model: "llama-3.3-70b-versatile" })
 
   // ── Refs ───────────────────────────────────────────────────────────────────
   const transcriptRef = useRef("")
@@ -414,37 +414,97 @@ const CluelyUI: React.FC = () => {
   }, [autoDetectEnabled, isStarted])
 
   // ── Speech recognition ─────────────────────────────────────────────────────
+
+  // Whisper hallucinates these phrases on silence/noise — comprehensive list
+  const WHISPER_HALLUCINATIONS = [
+    "thank you", "thanks for watching", "thanks for listening",
+    "please subscribe", "like and subscribe", "see you next time",
+    "bye bye", "goodbye", "good bye",
+    "i'm not sure", "i don't know", "i have no idea",
+    "tick tock", "tik tok", "rek rek", "marekin",
+    "the first time i was going to", "i was going to take a look",
+    "subtitles by", "captions by", "transcribed by",
+    "return empty", "return empty if", "if only silence",
+    "♪", "♫", "[music]", "[applause]", "[laughter]",
+    "you", // single word hallucination
+  ]
+
+  const isHallucination = (text: string): boolean => {
+    const lower = text.toLowerCase().trim()
+    const words = lower.split(/\s+/).filter(Boolean)
+    // Strip all punctuation to get real word content
+    const stripped = lower.replace(/[.,!?;:\-'"()\[\]]/g, "").trim()
+
+    // Pure punctuation or whitespace
+    if (stripped.length < 3) return true
+
+    // Single word that's very short (noise like "Self.", ".", "Mm")
+    if (words.length === 1 && words[0].replace(/[.,!?]/g, "").length < 4) return true
+
+    // Two identical words (e.g. "Self. Self.")
+    if (words.length === 2 && words[0].replace(/[.,!?]/g, "") === words[1].replace(/[.,!?]/g, "")) return true
+
+    // Known Whisper silence hallucinations
+    if (WHISPER_HALLUCINATIONS.some(h => lower === h || lower === h + "." || lower.startsWith(h + " "))) return true
+
+    // Contains a known hallucination phrase as the whole content (for longer phrases)
+    if (WHISPER_HALLUCINATIONS.some(h => h.length > 8 && lower.includes(h))) return true
+
+    // Repetitive words (e.g. "rek rek rek", "tick tock tick tock")
+    if (words.length >= 2 && words.length <= 6) {
+      const unique = new Set(words.map(w => w.replace(/[.,!?]/g, "")))
+      if (unique.size <= 2 && words.length >= 3) return true
+    }
+
+    return false
+  }
+
   const startWhisperRecording = useCallback(async () => {
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true } })
-      const recorder = new MediaRecorder(stream, { mimeType: MediaRecorder.isTypeSupported("audio/webm;codecs=opus") ? "audio/webm;codecs=opus" : "" })
+      const stream = await navigator.mediaDevices.getUserMedia({
+        audio: { echoCancellation: true, noiseSuppression: true, sampleRate: 16000 }
+      })
+      const mimeType = MediaRecorder.isTypeSupported("audio/webm;codecs=opus")
+        ? "audio/webm;codecs=opus"
+        : MediaRecorder.isTypeSupported("audio/webm") ? "audio/webm" : ""
+      const recorder = new MediaRecorder(stream, mimeType ? { mimeType } : undefined)
       mediaRecorderRef.current = recorder
       audioChunksRef.current = []
+
       recorder.ondataavailable = (e) => { if (e.data.size > 0) audioChunksRef.current.push(e.data) }
+
       recorder.onstop = async () => {
-        if (!audioChunksRef.current.length) { if (isListeningRef.current) setTimeout(startWhisperRecording, 100); return }
-        const blob = new Blob(audioChunksRef.current, { type: recorder.mimeType })
+        if (!audioChunksRef.current.length) {
+          if (isListeningRef.current) setTimeout(startWhisperRecording, 100)
+          return
+        }
+        const blob = new Blob(audioChunksRef.current, { type: recorder.mimeType || "audio/webm" })
         const buf = await blob.arrayBuffer()
         setIsTranscribing(true)
         try {
           const text = await window.electronAPI.transcribeAudio(new Uint8Array(buf), settings.transcriptionLanguage)
-          if (text?.trim().length > 1) {
-            const clean = text.trim()
-            const hallucinations = ["I'm not sure what I'm doing", "Thank you.", "Okay."]
-            if (!hallucinations.some(h => clean.toLowerCase().includes(h.toLowerCase()) && clean.split(" ").length < 8)) {
-              transcriptRef.current += clean + " "
-              setTranscript(transcriptRef.current)
-            }
+          const clean = text?.trim() ?? ""
+          console.log("[STT] Whisper raw:", JSON.stringify(clean))
+          if (clean.length > 1 && !isHallucination(clean)) {
+            console.log("[STT] Accepted:", clean)
+            transcriptRef.current += clean + " "
+            setTranscript(transcriptRef.current)
+          } else if (clean.length > 1) {
+            console.log("[STT] Rejected hallucination:", JSON.stringify(clean))
           }
         } catch (err: any) {
           if (!err.message?.includes("429")) setSpeechError(err.message || "Transcription failed")
-        } finally { setIsTranscribing(false) }
+        } finally {
+          setIsTranscribing(false)
+        }
         if (isListeningRef.current) setTimeout(startWhisperRecording, 100)
       }
+
       recorder.start()
       setIsRecording(true)
       setSpeechError("")
-      setTimeout(() => { if (recorder.state === "recording") recorder.stop() }, 8000)
+      // 6s chunks — shorter = less hallucination, more responsive
+      setTimeout(() => { if (recorder.state === "recording") recorder.stop() }, 6000)
     } catch (err: any) {
       setSpeechError(`Mic error: ${err.message}`)
       setIsRecording(false)
@@ -538,9 +598,17 @@ const CluelyUI: React.FC = () => {
   }
 
   const handleGetAnswer = async () => {
-    const t = transcriptRef.current.trim()
-    log("handleGetAnswer called — transcript length:", t.length, "| locked:", answerLoadingRef.current)
-    if (!t) { log("SKIP — empty transcript"); return }
+    const fullTranscript = transcriptRef.current.trim()
+    const t = fullTranscript.slice(-800)
+    const wordCount = t.split(/\s+/).filter(Boolean).length
+
+    log("handleGetAnswer — chars:", t.length, "| words:", wordCount, "| locked:", answerLoadingRef.current)
+
+    // Need at least 25 chars and 4 words — filters out "So, let's go." (13 chars, 3 words)
+    if (t.length < 25 || wordCount < 4) {
+      log("SKIP — transcript too short to be a real question:", JSON.stringify(t))
+      return
+    }
     if (answerLoadingRef.current) { log("SKIP — already loading"); return }
 
     answerLoadingRef.current = true
@@ -563,6 +631,11 @@ const CluelyUI: React.FC = () => {
         setAnswer(result)
         // Snapshot the question context for session QA log
         setSessionQA(prev => [...prev, { question: t.slice(-200), answer: result }])
+        // Clear transcript after answering — next question starts fresh
+        // This prevents the LLM from seeing old answered questions as "recent"
+        transcriptRef.current = ""
+        setTranscript("")
+        log("Transcript cleared — ready for next question")
         // Auto-generate followups in background — don't block the lock
         setFollowupsLoading(true)
         window.electronAPI.generateFollowups(t, result)
@@ -582,8 +655,8 @@ const CluelyUI: React.FC = () => {
   }
 
   const handleRegenerate = async () => {
-    const t = transcriptRef.current.trim()
-    log("handleRegenerate — transcript length:", t.length, "| locked:", answerLoadingRef.current)
+    const t = transcriptRef.current.trim().slice(-800)
+    log("handleRegenerate — window:", t.length, "chars | locked:", answerLoadingRef.current)
     if (!t) { log("SKIP — empty transcript"); return }
     if (answerLoadingRef.current) { log("SKIP — already loading"); return }
 
